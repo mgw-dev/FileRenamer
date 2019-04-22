@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Data;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using Microsoft.WindowsAPICodePack.Dialogs;
 
@@ -12,7 +15,13 @@ namespace FileRenamer
             InitializeComponent();
         }
 
+        private const string colRename = "Rename?";
+        private const string colFileName = "File Name";
+        private const string colNewName = "New Name";
+
+
         private DirectoryInfo selectedDirectory;
+        private DataTable dt;
 
         private void btnSelPath_Click(object sender, EventArgs e)
         {
@@ -20,7 +29,7 @@ namespace FileRenamer
             {
                 cfDialog.IsFolderPicker = true;
 
-                DialogResult dr = (DialogResult) cfDialog.ShowDialog();
+                DialogResult dr = (DialogResult)cfDialog.ShowDialog();
 
                 if (dr == DialogResult.OK)
                 {
@@ -31,72 +40,58 @@ namespace FileRenamer
 
             if (selectedDirectory != null)
             {
-                FillDataGrid(selectedDirectory.GetFiles());
+                FilesGridView.DataSource = filesTable(selectedDirectory.GetFiles());
+                dgvSetup();
             }
 
         }
 
         private void btnCommitRename_Click(object sender, EventArgs e)
         {
-            for (int i = 0; i < FilesGridView.RowCount; i++)
+            foreach (DataRow row in dt.Rows)
             {
-                if (Convert.ToBoolean(FilesGridView.Rows[i].Cells[1].Value))
+                if((bool)row[colRename])
                 {
-                    File.Move($"{selectedDirectory}\\{FilesGridView.Rows[i].Cells[0].Value}", $"{selectedDirectory}\\{FilesGridView.Rows[i].Cells[2].Value}");
-                    FilesGridView.Rows[i].Cells[0].Value = FilesGridView.Rows[i].Cells[2].Value;
+                    File.Move($"{selectedDirectory}\\{row[colFileName]}", $"{selectedDirectory}\\{row[colNewName]}");
                 }
             }
-            //FillDataGrid(selectedDirectory.GetFiles());
-        }
-
-        void FillDataGrid(FileInfo[] Files)
-        {
-            FilesGridView.Rows.Clear();
-            foreach (FileInfo fileInfo in Files)
-            {
-                int r = FilesGridView.Rows.Add();
-                FilesGridView.Rows[r].Cells[0].Value = fileInfo.Name;
-                FilesGridView.Rows[r].Cells[2].Value = fileInfo.Name;
-            }
-        }
-
-        private void SetupDataGrid()
-        {
-            DataGridViewTextBoxColumn oldNameColumn = new DataGridViewTextBoxColumn()
-            {
-                HeaderText = "Files:",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
-            };
-
-            DataGridViewCheckBoxColumn cbColumn = new DataGridViewCheckBoxColumn()
-            {
-                HeaderText = "Rename?",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
-            };
-
-            DataGridViewTextBoxColumn newNameColumn = new DataGridViewTextBoxColumn()
-            {
-                HeaderText = "New Name:",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
-            };
-
-            FilesGridView.Columns.Add(oldNameColumn);
-            FilesGridView.Columns.Add(cbColumn);
-            FilesGridView.Columns.Add(newNameColumn);
-
-            FilesGridView.Columns[0].ReadOnly = true;
-            FilesGridView.AllowUserToAddRows = false;
-            FilesGridView.AllowUserToDeleteRows = false;
+            FilesGridView.DataSource = filesTable(selectedDirectory.GetFiles());
+            dgvSetup();
         }
 
         private void UI_Load(object sender, EventArgs e)
         {
-            SetupDataGrid();
+
         }
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
 
         }
+
+        private DataTable filesTable(FileInfo[] files)
+        {
+            dt = new DataTable();
+            dt.Columns.Add(colRename, typeof(bool));
+            dt.Columns.Add(colFileName);
+            dt.Columns.Add(colNewName);
+
+            foreach (FileInfo file in files)
+            {
+                dt.Rows.Add(new object[] { false, file.Name, file.Name });
+            }
+
+            return dt;
+        }
+
+        private void dgvSetup()
+        {
+            if (FilesGridView.Columns.Count > 0)
+            {
+                FilesGridView.Columns[colFileName].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                FilesGridView.Columns[colNewName].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            }
+        }
+
     }
 }
